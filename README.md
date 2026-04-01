@@ -1,4 +1,6 @@
 # claude-code-any-buddy
+⚠️ Not tested on Windows, if claude session does not start after using this tool use the restore command or you may need to reinstall claude code. I have tested this on linux and mac and seems to work well
+
 Pick any Claude Code companion pet you want.
 
 ```bash
