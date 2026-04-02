@@ -1,5 +1,6 @@
 import type { CliFlags, DesiredTraits } from '@/types.js';
 import { ISSUE_URL } from '@/constants.js';
+import { createAnimator } from '../animator.ts';
 import {
   createInitialState,
   stateToDesiredTraits,
@@ -60,9 +61,14 @@ export async function runBuilder(
 
     return await new Promise<DesiredTraits | null>((resolve) => {
       let resolved = false;
+      const animator = createAnimator(500);
+      let unsubAnimation: (() => void) | null = null;
+
       function finish(result: DesiredTraits | null): void {
         if (resolved) return;
         resolved = true;
+        unsubAnimation?.();
+        animator.stop();
         keyboard.destroy();
         r.destroy();
         renderer = null;
@@ -118,8 +124,9 @@ export async function runBuilder(
       // Preview panel (right)
       const preview = createPreviewPanel(mainRow);
 
-      // Initial preview render
+      // Initial preview render + start animation
       preview.update(initialState);
+      unsubAnimation = animator.subscribe((frame) => preview.tick(frame));
 
       const HELP_DEFAULT = '  \u2191\u2193 select   Tab/Enter next   Shift+Tab prev   Esc cancel';
       const HELP_CONFIRM = browseOnly
