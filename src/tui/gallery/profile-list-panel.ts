@@ -31,6 +31,7 @@ function entriesToOptions(entries: GalleryEntry[]): SelectOption[] {
 export interface ProfileListPanel {
   container: OTUIRenderable;
   select: SelectRenderable | null;
+  update: (entries: GalleryEntry[], selectedIndex: number) => void;
 }
 
 export function createProfileListPanel(
@@ -76,5 +77,13 @@ export function createProfileListPanel(
   // Focus the Select so it receives keyboard events immediately
   select?.focus();
 
-  return { container: containerRenderable ?? (container as unknown as OTUIRenderable), select };
+  return {
+    container: containerRenderable ?? (container as unknown as OTUIRenderable),
+    select,
+    update(newEntries: GalleryEntry[], newSelectedIndex: number) {
+      if (!select) return;
+      select.options = entriesToOptions(newEntries);
+      select.selectedIndex = newSelectedIndex;
+    },
+  };
 }

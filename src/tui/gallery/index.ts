@@ -6,9 +6,12 @@ import { DEFAULT_PROFILE, type GalleryEntry } from './state.ts';
 
 export type GalleryResult = { action: 'apply'; profileName: string } | { action: 'cancel' };
 
+export type GalleryDeleteHandler = (profileName: string) => GalleryEntry[];
+
 export async function runGalleryTUI(
-  entries: GalleryEntry[],
+  initialEntries: GalleryEntry[],
   activeIndex: number,
+  onDelete?: GalleryDeleteHandler,
 ): Promise<GalleryResult> {
   const otui = await import('@opentui/core');
   const { createCliRenderer, Box, Text, SelectRenderableEvents } = otui;
@@ -18,6 +21,7 @@ export async function runGalleryTUI(
   const { setupGalleryKeyboard } = await import('./keyboard.ts');
 
   let renderer: Awaited<ReturnType<typeof createCliRenderer>> | null = null;
+  let entries = initialEntries;
   let selectedIndex = activeIndex;
 
   try {
@@ -66,7 +70,7 @@ export async function runGalleryTUI(
         }),
         Text({
           id: 'help-bar',
-          content: '  ↑↓ navigate   Enter apply   Esc exit',
+          content: '  ↑↓ navigate   Enter apply   d delete   Esc exit',
           fg: DIM_COLOR,
           height: 1,
           flexShrink: 0,
@@ -98,35 +102,58 @@ export async function runGalleryTUI(
         preview.update(entries[index]);
       });
 
-      const HELP_DEFAULT = '  ↑↓ navigate   Enter apply   Esc exit';
-      const HELP_CONFIRM = '  Enter/Y confirm   Esc/N go back';
+      const HELP_BROWSE = '  ↑↓ navigate   Enter apply   d delete   Esc exit';
+      const HELP_CONFIRM_APPLY = '  Enter/Y confirm   Esc/N go back';
+      const helpConfirmDelete = (name: string) =>
+        `  Delete "${name}"?   Enter/Y confirm   Esc/N go back`;
+      const DELETE_COLOR = '#FF5555';
 
-      // Keyboard — only handles Enter (confirm), Escape, Ctrl+C
-      const keyboard = setupGalleryKeyboard(r.keyInput, {
-        onApply: () => {
+      function selectedProfileName(): string {
+        const entry = entries[selectedIndex];
+        return entry.isDefault ? DEFAULT_PROFILE : entry.name;
+      }
+
+      function selectedDisplayName(): string {
+        const entry = entries[selectedIndex];
+        return entry.isDefault ? 'Original' : entry.name;
+      }
+
+      // Keyboard — handles Enter (confirm), d (delete), Escape, Ctrl+C
+      const keyboard = setupGalleryKeyboard(
+        r.keyInput,
+        () => {
           const entry = entries[selectedIndex];
-          if (entry.isDefault) {
-            finish({ action: 'apply', profileName: DEFAULT_PROFILE });
-          } else {
-            finish({ action: 'apply', profileName: entry.name });
-          }
+          return !!onDelete && !entry.isDefault && !entry.isActive;
         },
-        onCancel: () => {
-          finish({ action: 'cancel' });
+        {
+          onApply: () => {
+            finish({ action: 'apply', profileName: selectedProfileName() });
+          },
+          onDelete: () => {
+            if (!onDelete) return;
+            entries = onDelete(selectedProfileName());
+            selectedIndex = Math.min(selectedIndex, entries.length - 1);
+            profileList.update(entries, selectedIndex);
+            preview.update(entries[selectedIndex]);
+          },
+          onCancel: () => {
+            finish({ action: 'cancel' });
+          },
+          onModeChange: (mode) => {
+            if (!helpBar) return;
+            if (mode === 'confirmApply') {
+              helpBar.content = HELP_CONFIRM_APPLY;
+              helpBar.fg = FOCUS_BORDER;
+            } else if (mode === 'confirmDelete') {
+              helpBar.content = helpConfirmDelete(selectedDisplayName());
+              helpBar.fg = DELETE_COLOR;
+            } else {
+              helpBar.content = HELP_BROWSE;
+              helpBar.fg = DIM_COLOR;
+            }
+          },
         },
-        onEnterConfirmMode: () => {
-          if (helpBar) {
-            helpBar.content = HELP_CONFIRM;
-            helpBar.fg = FOCUS_BORDER;
-          }
-        },
-        onExitConfirmMode: () => {
-          if (helpBar) {
-            helpBar.content = HELP_DEFAULT;
-            helpBar.fg = DIM_COLOR;
-          }
-        },
-      });
+      );
 
       // Ctrl+C fallback
       r.keyInput.on('keypress', (key) => {

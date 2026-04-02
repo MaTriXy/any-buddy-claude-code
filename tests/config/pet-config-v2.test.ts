@@ -226,10 +226,12 @@ describe('deleteProfile', () => {
   });
 
   it('throws when deleting the active profile', () => {
+    const activeSalt = 'active-salt-12345';
     savePetConfigV2(
       makeV2({
+        salt: activeSalt,
         activeProfile: 'active',
-        profiles: { active: makeProfile() },
+        profiles: { active: makeProfile({ salt: activeSalt }) },
       }),
     );
 

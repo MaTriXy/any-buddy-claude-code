@@ -124,7 +124,7 @@ export function switchToProfile(name: string): PetConfigV2 {
 export function deleteProfile(name: string): void {
   const config = loadPetConfigV2();
   if (!config?.profiles[name]) return;
-  if (config.activeProfile === name) {
+  if (config.profiles[name].salt === config.salt) {
     throw new Error(`Cannot delete the active buddy "${name}". Switch to another first.`);
   }
   config.profiles = Object.fromEntries(

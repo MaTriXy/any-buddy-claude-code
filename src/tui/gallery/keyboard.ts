@@ -1,32 +1,30 @@
 import type { KeyEvent } from '@opentui/core';
 import type { KeyHandler } from '@opentui/core';
 
+type Mode = 'browse' | 'confirmApply' | 'confirmDelete';
+
 export interface GalleryKeyboardCallbacks {
   onApply: () => void;
   onCancel: () => void;
-  onEnterConfirmMode: () => void;
-  onExitConfirmMode: () => void;
+  onDelete: () => void;
+  onModeChange: (mode: Mode) => void;
 }
 
 export interface GalleryKeyboardController {
-  isConfirming: () => boolean;
+  mode: () => Mode;
   destroy: () => void;
 }
 
 export function setupGalleryKeyboard(
   keyInput: KeyHandler,
+  canDelete: () => boolean,
   callbacks: GalleryKeyboardCallbacks,
 ): GalleryKeyboardController {
-  let confirmMode = false;
+  let current: Mode = 'browse';
 
-  function enterConfirmMode(): void {
-    confirmMode = true;
-    callbacks.onEnterConfirmMode();
-  }
-
-  function exitConfirmMode(): void {
-    confirmMode = false;
-    callbacks.onExitConfirmMode();
+  function setMode(next: Mode): void {
+    current = next;
+    callbacks.onModeChange(current);
   }
 
   function handleKeyPress(key: KeyEvent): void {
@@ -35,17 +33,21 @@ export function setupGalleryKeyboard(
       return;
     }
 
-    if (confirmMode) {
+    if (current !== 'browse') {
       if (key.name === 'return' || key.name === 'y') {
-        callbacks.onApply();
+        const action = current === 'confirmApply' ? callbacks.onApply : callbacks.onDelete;
+        setMode('browse');
+        action();
       } else if (key.name === 'escape' || key.name === 'n') {
-        exitConfirmMode();
+        setMode('browse');
       }
       return;
     }
 
     if (key.name === 'return') {
-      enterConfirmMode();
+      setMode('confirmApply');
+    } else if (key.name === 'd' && canDelete()) {
+      setMode('confirmDelete');
     } else if (key.name === 'escape') {
       callbacks.onCancel();
     }
@@ -54,7 +56,7 @@ export function setupGalleryKeyboard(
   keyInput.on('keypress', handleKeyPress);
 
   return {
-    isConfirming: () => confirmMode,
+    mode: () => current,
     destroy: () => {
       keyInput.removeListener('keypress', handleKeyPress);
     },

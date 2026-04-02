@@ -10,6 +10,7 @@ import {
   loadPetConfigV2,
   savePetConfigV2,
   saveProfile,
+  deleteProfile,
   getCompanionName,
   renameCompanion,
   getCompanionPersonality,
@@ -71,7 +72,10 @@ export async function runBuddies(): Promise<void> {
   try {
     const { canUseGalleryTUI, runGalleryTUI } = await import('../gallery/index.ts');
     if (await canUseGalleryTUI()) {
-      const result = await runGalleryTUI(entries, startIndex);
+      const result = await runGalleryTUI(entries, startIndex, (name) => {
+        deleteProfile(name);
+        return buildGalleryEntries(userId, binaryPath);
+      });
       if (result.action === 'cancel') {
         console.log(chalk.dim('\n  Cancelled.\n'));
         return;
