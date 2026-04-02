@@ -127,3 +127,27 @@ export interface CliFlags {
 }
 
 export type RngFunction = () => number;
+
+export interface ProfileData {
+  salt: string;
+  species: Species;
+  rarity: Rarity;
+  eye: Eye;
+  hat: Hat;
+  shiny: boolean;
+  stats: Partial<Record<StatName, number>>;
+  name: string | null;
+  personality: string | null;
+  createdAt: string;
+}
+
+export interface PetConfigV2 {
+  version: 2;
+  activeProfile: string | null;
+  salt: string;
+  previousSalt?: string;
+  profiles: Record<string, ProfileData>;
+  appliedTo?: string;
+  appliedAt?: string;
+  restored?: boolean;
+}

@@ -5,6 +5,22 @@ const BAR_WIDTH = 14;
 const FILLED = '\u2588'; // █
 const EMPTY = '\u2591'; // ░
 
+export function renderStatBarsFromStats(stats: Partial<Record<StatName, number>>): string {
+  const entries = STAT_NAMES.filter((s) => stats[s] !== undefined);
+  if (entries.length === 0) return '';
+  const padWidth = Math.max(...STAT_NAMES.map((s) => s.length));
+  const maxVal = Math.max(...entries.map((s) => stats[s] ?? 0), 1);
+  const lines: string[] = [];
+  for (const name of entries) {
+    const val = stats[name] ?? 0;
+    const label = name.padEnd(padWidth);
+    const filled = Math.round(BAR_WIDTH * (val / maxVal));
+    const bar = FILLED.repeat(filled) + EMPTY.repeat(BAR_WIDTH - filled);
+    lines.push(`${label} ${bar}  ${String(val).padStart(3)}`);
+  }
+  return lines.join('\n');
+}
+
 export function renderStatBars(peak: StatName | null, dump: StatName | null): string {
   if (!peak && !dump) return '';
   const padWidth = Math.max(...STAT_NAMES.map((s) => s.length));

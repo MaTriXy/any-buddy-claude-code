@@ -4,3 +4,4 @@ export { runApply } from './commands/apply.ts';
 export { runRestore } from './commands/restore.ts';
 export { runRehatch } from './commands/rehatch.ts';
 export { runInteractive } from './commands/interactive.ts';
+export { runBuddies } from './commands/buddies.ts';

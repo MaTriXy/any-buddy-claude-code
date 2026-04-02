@@ -1,4 +1,13 @@
-export { savePetConfig, loadPetConfig } from './pet-config.ts';
+export {
+  savePetConfig,
+  loadPetConfig,
+  loadPetConfigV2,
+  savePetConfigV2,
+  saveProfile,
+  getProfiles,
+  switchToProfile,
+  deleteProfile,
+} from './pet-config.ts';
 export {
   getClaudeUserId,
   getCompanionName,

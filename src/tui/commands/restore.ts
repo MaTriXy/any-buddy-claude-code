@@ -3,7 +3,13 @@ import { ORIGINAL_SALT } from '@/constants.js';
 import { findClaudeBinary } from '@/patcher/binary-finder.js';
 import { verifySalt, getMinSaltCount } from '@/patcher/salt-ops.js';
 import { patchBinary, restoreBinary } from '@/patcher/patch.js';
-import { savePetConfig, loadPetConfig, isHookInstalled, removeHook } from '@/config/index.js';
+import {
+  loadPetConfig,
+  loadPetConfigV2,
+  savePetConfigV2,
+  isHookInstalled,
+  removeHook,
+} from '@/config/index.js';
 import { banner, warnCodesign } from '../display.ts';
 
 export async function runRestore(): Promise<void> {
@@ -35,6 +41,22 @@ export async function runRestore(): Promise<void> {
     console.log(chalk.dim('  Removed SessionStart hook.'));
   }
 
-  savePetConfig({ salt: ORIGINAL_SALT, restored: true });
+  // Preserve saved profiles for future use
+  const existingV2 = loadPetConfigV2();
+  const profiles = existingV2?.profiles ?? {};
+  savePetConfigV2({
+    version: 2,
+    salt: ORIGINAL_SALT,
+    activeProfile: null,
+    profiles,
+    restored: true,
+  });
+  if (Object.keys(profiles).length > 0) {
+    console.log(
+      chalk.dim(
+        `  Buddies preserved (${Object.keys(profiles).length} saved). Use any-buddy buddies to reactivate.`,
+      ),
+    );
+  }
   console.log();
 }

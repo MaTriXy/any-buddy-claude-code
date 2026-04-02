@@ -7,6 +7,7 @@ import {
   runApply,
   runRestore,
   runRehatch,
+  runBuddies,
 } from './tui/index.ts';
 import { ISSUE_URL, diagnostics } from './constants.ts';
 import type { CliFlags } from './types.ts';
@@ -99,6 +100,9 @@ try {
     case 'rehatch':
       await runRehatch();
       break;
+    case 'buddies':
+      await runBuddies();
+      break;
     case 'help':
       printHelp();
       break;
@@ -135,6 +139,7 @@ Usage:
   any-buddy current                  Show your current pet
   any-buddy apply [--silent]         Re-apply saved pet after update
   any-buddy restore                  Restore original pet
+  any-buddy buddies                  Browse and switch between your buddies
   any-buddy rehatch                  Delete companion to re-hatch via /buddy
 
 Options:
