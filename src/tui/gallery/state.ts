@@ -4,6 +4,8 @@ import { roll } from '@/generation/index.js';
 import { getProfiles, loadPetConfigV2 } from '@/config/index.js';
 import { isNodeRuntime } from '@/patcher/salt-ops.js';
 
+export const DEFAULT_PROFILE = '__default__';
+
 export interface GalleryEntry {
   name: string;
   isDefault: boolean;

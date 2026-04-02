@@ -1,9 +1,9 @@
 import type { BoxRenderable, TextRenderable } from '@opentui/core';
 import { Box, Text } from '@opentui/core';
 import type { Renderable as OTUIRenderable } from '@opentui/core';
-import { renderSprite, IDLE_SEQUENCE } from '@/sprites/index.js';
+import { renderAnimatedSprite, IDLE_SEQUENCE } from '@/sprites/index.js';
 import { RARITY_STARS } from '@/constants.js';
-import { RARITY_HEX, BORDER_COLOR } from '../builder/colors.ts';
+import { RARITY_HEX, BORDER_COLOR, HELP_COLOR } from '../builder/colors.ts';
 import { renderStatBarsFromStats } from '../builder/stat-bars.ts';
 import type { GalleryEntry } from './state.ts';
 
@@ -62,15 +62,9 @@ export function createGalleryPreviewPanel(parent: OTUIRenderable): GalleryPrevie
   companionText = containerRenderable?.findDescendantById('gp-companion') as TextRenderable;
   statsText = containerRenderable?.findDescendantById('gp-stats') as TextRenderable;
 
-  function renderSpriteFrame(bones: GalleryEntry['bones'], frame: number): void {
+  function renderSpriteAtFrame(bones: GalleryEntry['bones'], frame: number): void {
     if (!spriteText) return;
-    const step = IDLE_SEQUENCE[frame % IDLE_SEQUENCE.length];
-    const sleeping = step === -1;
-    const spriteFrame = sleeping ? 0 : step;
-    const lines = renderSprite(bones, spriteFrame, sleeping);
-    const padded = [...lines];
-    while (padded.length < 5) padded.push('');
-    spriteText.content = padded.slice(0, 5).join('\n');
+    spriteText.content = renderAnimatedSprite(bones, frame);
   }
 
   function update(entry: GalleryEntry): void {
@@ -87,7 +81,7 @@ export function createGalleryPreviewPanel(parent: OTUIRenderable): GalleryPrevie
     titleText.fg = color;
 
     // Sprite (render frame 0 on entry change)
-    renderSpriteFrame(bones, 0);
+    renderSpriteAtFrame(bones, 0);
     spriteText.fg = color;
 
     // Details
@@ -109,7 +103,7 @@ export function createGalleryPreviewPanel(parent: OTUIRenderable): GalleryPrevie
       companionLines += `\n"${truncated}"`;
     }
     companionText.content = companionLines;
-    companionText.fg = '#888888';
+    companionText.fg = HELP_COLOR;
 
     // Stats
     const statContent = renderStatBarsFromStats(bones.stats);
@@ -128,7 +122,7 @@ export function createGalleryPreviewPanel(parent: OTUIRenderable): GalleryPrevie
     const step = IDLE_SEQUENCE[frame % IDLE_SEQUENCE.length];
     if (step === lastRenderedFrame) return;
     lastRenderedFrame = step;
-    renderSpriteFrame(currentEntry.bones, frame);
+    renderSpriteAtFrame(currentEntry.bones, frame);
   }
 
   return {

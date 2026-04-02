@@ -415,8 +415,7 @@ export async function runInteractive(flags: CliFlags = {}): Promise<void> {
 
   // Update profile with final companion identity (now that rename/personality are done)
   if (profileName) {
-    const profiles = loadPetConfigV2()?.profiles ?? {};
-    const saved = profiles[profileName];
+    const saved = configV2.profiles[profileName];
     if (saved) {
       saved.name = getCompanionName() ?? saved.name;
       saved.personality = getCompanionPersonality() ?? saved.personality;

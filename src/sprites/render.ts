@@ -7,6 +7,19 @@ import { BODIES, HAT_LINES } from './data.ts';
  */
 export const IDLE_SEQUENCE = [0, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 2, 0, 0, 0] as const;
 
+/**
+ * Render a sprite at the given animation frame with padding.
+ * Reads from IDLE_SEQUENCE to determine frame index and sleeping state.
+ */
+export function renderAnimatedSprite(bones: Bones, frame: number, height = 5): string {
+  const step = IDLE_SEQUENCE[frame % IDLE_SEQUENCE.length];
+  const sleeping = step === -1;
+  const spriteFrame = sleeping ? 0 : step;
+  const lines = renderSprite(bones, spriteFrame, sleeping);
+  while (lines.length < height) lines.push('');
+  return lines.slice(0, height).join('\n');
+}
+
 export function renderSprite(bones: Bones, frame = 0, sleeping = false): string[] {
   const frames = BODIES[bones.species];
   const eye = sleeping ? '-' : bones.eye;

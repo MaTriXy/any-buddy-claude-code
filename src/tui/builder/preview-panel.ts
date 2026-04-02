@@ -1,7 +1,7 @@
 import type { BoxRenderable, TextRenderable } from '@opentui/core';
 import { Box, Text } from '@opentui/core';
 import type { Renderable as OTUIRenderable } from '@opentui/core';
-import { renderSprite, IDLE_SEQUENCE } from '@/sprites/index.js';
+import { renderAnimatedSprite, IDLE_SEQUENCE } from '@/sprites/index.js';
 import { RARITY_STARS } from '@/constants.js';
 import { RARITY_HEX, BORDER_COLOR } from './colors.ts';
 import { stateToBones, type BuilderState } from './state.ts';
@@ -63,13 +63,7 @@ export function createPreviewPanel(parent: OTUIRenderable): PreviewPanel {
 
   function renderSpriteAtFrame(bones: ReturnType<typeof stateToBones>, frame: number): void {
     if (!spriteText) return;
-    const seqEntry = IDLE_SEQUENCE[frame % IDLE_SEQUENCE.length];
-    const spriteFrame = seqEntry === -1 ? 0 : seqEntry;
-    const sleeping = seqEntry === -1;
-    const lines = renderSprite(bones, spriteFrame, sleeping);
-    const padded = [...lines];
-    while (padded.length < 5) padded.push('');
-    spriteText.content = padded.slice(0, 5).join('\n');
+    spriteText.content = renderAnimatedSprite(bones, frame);
   }
 
   function update(state: BuilderState): void {

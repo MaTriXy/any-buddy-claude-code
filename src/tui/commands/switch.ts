@@ -16,7 +16,12 @@ import {
   setCompanionPersonality,
 } from '@/config/index.js';
 import { banner, showPet, warnCodesign } from '../display.ts';
-import { buildGalleryEntries, activeEntryIndex, type GalleryEntry } from '../gallery/state.ts';
+import {
+  buildGalleryEntries,
+  activeEntryIndex,
+  DEFAULT_PROFILE,
+  type GalleryEntry,
+} from '../gallery/state.ts';
 
 const MIN_SALT_COUNT = platform() === 'win32' ? 1 : 3;
 
@@ -27,7 +32,7 @@ async function runSequentialSwitch(entries: GalleryEntry[]): Promise<string | nu
     const stars = RARITY_STARS[entry.bones.rarity];
     return {
       name: `${dot} ${name} — ${entry.bones.species} ${stars}`,
-      value: entry.isDefault ? '__default__' : entry.name,
+      value: entry.isDefault ? DEFAULT_PROFILE : entry.name,
     };
   });
 
@@ -93,7 +98,7 @@ export async function runSwitch(): Promise<void> {
 
   // Skip if already active
   const selectedEntry = entries.find(
-    (e) => (e.isDefault ? '__default__' : e.name) === selectedName,
+    (e) => (e.isDefault ? DEFAULT_PROFILE : e.name) === selectedName,
   );
   if (selectedEntry?.isActive) {
     console.log(chalk.dim('\n  Already active.\n'));
@@ -111,7 +116,7 @@ export async function runSwitch(): Promise<void> {
 
   // Find the old salt in binary
   const oldSalt = config?.salt ?? ORIGINAL_SALT;
-  const isDefault = selectedName === '__default__';
+  const isDefault = selectedName === DEFAULT_PROFILE;
   const newSalt = isDefault ? ORIGINAL_SALT : config?.profiles[selectedName]?.salt;
 
   if (!newSalt) {
@@ -144,27 +149,17 @@ export async function runSwitch(): Promise<void> {
   }
 
   // Update config
-  if (isDefault) {
-    const updated = loadPetConfigV2();
-    if (updated) {
-      updated.previousSalt = updated.salt;
-      updated.salt = ORIGINAL_SALT;
-      updated.activeProfile = null;
-      updated.appliedAt = new Date().toISOString();
-      savePetConfigV2(updated);
-    }
-  } else {
-    // switchToProfile is just config update — we already patched binary above
-    const updated = loadPetConfigV2();
-    if (updated) {
-      updated.previousSalt = updated.salt;
-      updated.activeProfile = selectedName;
-      updated.salt = newSalt;
-      updated.appliedAt = new Date().toISOString();
-      savePetConfigV2(updated);
-    }
+  const updated = loadPetConfigV2();
+  if (updated) {
+    updated.previousSalt = updated.salt;
+    updated.activeProfile = isDefault ? null : selectedName;
+    updated.salt = newSalt;
+    updated.appliedAt = new Date().toISOString();
+    savePetConfigV2(updated);
+  }
 
-    // Restore incoming profile's companion identity
+  // Restore incoming profile's companion identity
+  if (!isDefault) {
     const incoming = config?.profiles[selectedName];
     if (incoming?.name) {
       try {

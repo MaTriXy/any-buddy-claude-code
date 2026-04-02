@@ -2,7 +2,7 @@ import { ISSUE_URL } from '@/constants.js';
 import { canUseBuilder } from '../builder/index.ts';
 import { BORDER_COLOR, DIM_COLOR, FOCUS_BORDER } from '../builder/colors.ts';
 import { createAnimator } from '../animator.ts';
-import type { GalleryEntry, GalleryState } from './state.ts';
+import { DEFAULT_PROFILE, type GalleryEntry, type GalleryState } from './state.ts';
 
 export type GalleryResult = { action: 'apply'; profileName: string } | { action: 'cancel' };
 
@@ -111,7 +111,7 @@ export async function runGalleryTUI(
         onApply: () => {
           const entry = selectedEntry(state);
           if (entry.isDefault) {
-            finish({ action: 'apply', profileName: '__default__' });
+            finish({ action: 'apply', profileName: DEFAULT_PROFILE });
           } else {
             finish({ action: 'apply', profileName: entry.name });
           }
