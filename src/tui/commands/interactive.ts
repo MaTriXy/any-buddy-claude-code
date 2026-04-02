@@ -290,14 +290,14 @@ export async function runInteractive(flags: CliFlags = {}): Promise<void> {
   if (profileName) {
     saveProfile(profileName, {
       salt: result.salt,
-      species: desired.species,
-      rarity: desired.rarity,
-      eye: desired.eye,
-      hat: desired.hat,
-      shiny: desired.shiny,
+      species: foundBones.species,
+      rarity: foundBones.rarity,
+      eye: foundBones.eye,
+      hat: foundBones.hat,
+      shiny: foundBones.shiny,
       stats: foundBones.stats,
       name: null,
-      personality: null,
+      personality: DEFAULT_PERSONALITIES[foundBones.species] ?? null,
       createdAt: new Date().toISOString(),
     });
     console.log(chalk.green(`  Saved buddy "${profileName}"`));
@@ -410,14 +410,14 @@ export async function runInteractive(flags: CliFlags = {}): Promise<void> {
 
     console.log(chalk.dim(`\n  Current personality: "${currentPersonality}"`));
 
-    const speciesDefault = DEFAULT_PERSONALITIES[desired.species] || null;
+    const speciesDefault = DEFAULT_PERSONALITIES[foundBones.species] || null;
 
     let newPersonality: string | undefined = flags.personality;
     if (!newPersonality) {
       const choices: { name: string; value: string }[] = [{ name: 'Keep current', value: 'keep' }];
       if (speciesDefault) {
         choices.push({
-          name: `Use ${desired.species} default: "${speciesDefault.slice(0, 60)}..."`,
+          name: `Use ${foundBones.species} default: "${speciesDefault.slice(0, 60)}..."`,
           value: 'default',
         });
       }

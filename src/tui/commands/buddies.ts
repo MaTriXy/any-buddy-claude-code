@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { select } from '@inquirer/prompts';
 import { ORIGINAL_SALT, RARITY_STARS } from '@/constants.js';
 import { roll } from '@/generation/index.js';
+import { DEFAULT_PERSONALITIES } from '@/personalities.js';
 import { isNodeRuntime, verifySalt, isClaudeRunning, getMinSaltCount } from '@/patcher/salt-ops.js';
 import { patchBinary } from '@/patcher/patch.js';
 import { runPreflight } from '@/patcher/preflight.js';
@@ -174,9 +175,11 @@ export async function runBuddies(): Promise<void> {
         console.log(chalk.dim(`  Could not restore name: ${(err as Error).message}`));
       }
     }
-    if (incoming?.personality) {
+    const personality =
+      incoming?.personality ?? DEFAULT_PERSONALITIES[incoming?.species ?? 'duck'] ?? null;
+    if (personality) {
       try {
-        setCompanionPersonality(incoming.personality);
+        setCompanionPersonality(personality);
       } catch (err) {
         console.log(chalk.dim(`  Could not restore personality: ${(err as Error).message}`));
       }
