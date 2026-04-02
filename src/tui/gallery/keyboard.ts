@@ -2,7 +2,6 @@ import type { KeyEvent } from '@opentui/core';
 import type { KeyHandler } from '@opentui/core';
 
 export interface GalleryKeyboardCallbacks {
-  onNavigate: (direction: 'next' | 'prev') => void;
   onApply: () => void;
   onCancel: () => void;
   onEnterConfirmMode: () => void;
@@ -45,11 +44,7 @@ export function setupGalleryKeyboard(
       return;
     }
 
-    if (key.name === 'up' || key.name === 'left') {
-      callbacks.onNavigate('prev');
-    } else if (key.name === 'down' || key.name === 'right') {
-      callbacks.onNavigate('next');
-    } else if (key.name === 'return') {
+    if (key.name === 'return') {
       enterConfirmMode();
     } else if (key.name === 'escape') {
       callbacks.onCancel();

@@ -14,11 +14,6 @@ export interface GalleryEntry {
   profile: ProfileData | null;
 }
 
-export interface GalleryState {
-  entries: GalleryEntry[];
-  selectedIndex: number;
-}
-
 export function buildGalleryEntries(userId: string, binaryPath: string): GalleryEntry[] {
   const useNodeHash = isNodeRuntime(binaryPath);
   const profiles = getProfiles();
@@ -42,10 +37,6 @@ export function buildGalleryEntries(userId: string, binaryPath: string): Gallery
   }));
 
   return [defaultEntry, ...profileEntries];
-}
-
-export function selectedEntry(state: GalleryState): GalleryEntry {
-  return state.entries[state.selectedIndex];
 }
 
 export function activeEntryIndex(entries: GalleryEntry[]): number {

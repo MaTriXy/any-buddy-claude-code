@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  selectedEntry,
-  activeEntryIndex,
-  DEFAULT_PROFILE,
-  type GalleryEntry,
-  type GalleryState,
-} from '@/tui/gallery/state.js';
+import { activeEntryIndex, DEFAULT_PROFILE, type GalleryEntry } from '@/tui/gallery/state.js';
 import type { Bones } from '@/types.js';
 
 function makeBones(overrides: Partial<Bones> = {}): Bones {
@@ -30,19 +24,6 @@ function makeEntry(overrides: Partial<GalleryEntry> = {}): GalleryEntry {
     ...overrides,
   };
 }
-
-describe('selectedEntry', () => {
-  it('returns the entry at selectedIndex', () => {
-    const entries = [makeEntry({ name: 'a' }), makeEntry({ name: 'b' }), makeEntry({ name: 'c' })];
-    const state: GalleryState = { entries, selectedIndex: 1 };
-    expect(selectedEntry(state).name).toBe('b');
-  });
-
-  it('returns first entry when index is 0', () => {
-    const entries = [makeEntry({ name: 'first' })];
-    expect(selectedEntry({ entries, selectedIndex: 0 }).name).toBe('first');
-  });
-});
 
 describe('activeEntryIndex', () => {
   it('returns the index of the active entry', () => {

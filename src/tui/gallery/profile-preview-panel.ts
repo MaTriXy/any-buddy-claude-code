@@ -3,7 +3,7 @@ import { Box, Text } from '@opentui/core';
 import type { Renderable as OTUIRenderable } from '@opentui/core';
 import { renderAnimatedSprite, IDLE_SEQUENCE } from '@/sprites/index.js';
 import { RARITY_STARS } from '@/constants.js';
-import { RARITY_HEX, BORDER_COLOR, HELP_COLOR } from '@/tui/builder/colors.js';
+import { RARITY_HEX, BORDER_COLOR } from '@/tui/builder/colors.js';
 import { renderStatBarsFromStats } from '@/tui/builder/stat-bars.js';
 import type { GalleryEntry } from './state.ts';
 
@@ -14,11 +14,12 @@ export interface GalleryPreviewPanel {
 }
 
 export function createGalleryPreviewPanel(parent: OTUIRenderable): GalleryPreviewPanel {
+  let nameText: TextRenderable | null = null;
   let spriteText: TextRenderable | null = null;
   let titleText: TextRenderable | null = null;
   let detailsText: TextRenderable | null = null;
-  let companionText: TextRenderable | null = null;
   let statsText: TextRenderable | null = null;
+  let personalityText: TextRenderable | null = null;
   let currentEntry: GalleryEntry | null = null;
   let lastRenderedFrame = -1;
 
@@ -31,12 +32,16 @@ export function createGalleryPreviewPanel(parent: OTUIRenderable): GalleryPrevie
       title: ' Preview ',
       titleAlignment: 'center',
       flexDirection: 'column',
-      flexGrow: 1,
+      width: '50%',
+      overflow: 'hidden',
       padding: 1,
       paddingTop: 1,
       alignItems: 'center',
       justifyContent: 'flex-start',
     },
+    // Name (centered nameplate)
+    Text({ id: 'gp-name', content: '', height: 1 }),
+    Text({ content: '', height: 1 }),
     // Title: "dragon ★★★★★"
     Text({ id: 'gp-title', content: '', height: 1 }),
     Text({ content: '', height: 1 }),
@@ -46,21 +51,22 @@ export function createGalleryPreviewPanel(parent: OTUIRenderable): GalleryPrevie
     // Details
     Text({ id: 'gp-details', content: '', height: 4 }),
     Text({ content: '', height: 1 }),
-    // Companion name + personality
-    Text({ id: 'gp-companion', content: '', height: 3 }),
-    Text({ content: '', height: 1 }),
     // Stats
     Text({ id: 'gp-stats', content: '', height: 5 }),
+    Text({ content: '', height: 1 }),
+    // Personality (bottom, left-aligned, clips naturally via overflow)
+    Text({ id: 'gp-personality', content: '', width: '100%' }),
   );
 
   parent.add(container);
 
   const containerRenderable = parent.findDescendantById('gallery-preview') as BoxRenderable;
+  nameText = containerRenderable?.findDescendantById('gp-name') as TextRenderable;
   spriteText = containerRenderable?.findDescendantById('gp-sprite') as TextRenderable;
   titleText = containerRenderable?.findDescendantById('gp-title') as TextRenderable;
   detailsText = containerRenderable?.findDescendantById('gp-details') as TextRenderable;
-  companionText = containerRenderable?.findDescendantById('gp-companion') as TextRenderable;
   statsText = containerRenderable?.findDescendantById('gp-stats') as TextRenderable;
+  personalityText = containerRenderable?.findDescendantById('gp-personality') as TextRenderable;
 
   function renderSpriteAtFrame(bones: GalleryEntry['bones'], frame: number): void {
     if (!spriteText) return;
@@ -68,13 +74,19 @@ export function createGalleryPreviewPanel(parent: OTUIRenderable): GalleryPrevie
   }
 
   function update(entry: GalleryEntry): void {
-    if (!spriteText || !titleText || !detailsText || !companionText || !statsText) return;
+    if (!nameText || !spriteText || !titleText || !detailsText || !statsText || !personalityText)
+      return;
 
     currentEntry = entry;
     lastRenderedFrame = -1;
 
     const { bones, profile } = entry;
     const color = RARITY_HEX[bones.rarity];
+
+    // Name (centered nameplate)
+    const name = profile?.name ?? (entry.isDefault ? 'Original Pet' : entry.name);
+    nameText.content = name;
+    nameText.fg = color;
 
     // Title
     titleText.content = `${bones.species} ${RARITY_STARS[bones.rarity]}`;
@@ -94,17 +106,6 @@ export function createGalleryPreviewPanel(parent: OTUIRenderable): GalleryPrevie
     detailsText.content = detailLines.join('\n');
     detailsText.fg = color;
 
-    // Companion info
-    const name = profile?.name ?? (entry.isDefault ? 'Original Pet' : entry.name);
-    const personality = profile?.personality;
-    let companionLines = name;
-    if (personality) {
-      const truncated = personality.length > 50 ? personality.slice(0, 50) + '...' : personality;
-      companionLines += `\n"${truncated}"`;
-    }
-    companionText.content = companionLines;
-    companionText.fg = HELP_COLOR;
-
     // Stats
     const statContent = renderStatBarsFromStats(bones.stats);
     if (statContent) {
@@ -114,6 +115,17 @@ export function createGalleryPreviewPanel(parent: OTUIRenderable): GalleryPrevie
     } else {
       statsText.content = '';
       statsText.visible = false;
+    }
+
+    // Personality (bottom, clips via overflow: hidden)
+    const personality = profile?.personality;
+    if (personality) {
+      personalityText.content = `"${personality}"`;
+      personalityText.fg = color;
+      personalityText.visible = true;
+    } else {
+      personalityText.content = '';
+      personalityText.visible = false;
     }
   }
 

@@ -2,7 +2,7 @@ import { ISSUE_URL } from '@/constants.js';
 import { canUseBuilder } from '@/tui/builder/index.js';
 import { BORDER_COLOR, DIM_COLOR, FOCUS_BORDER } from '@/tui/builder/colors.js';
 import { createAnimator } from '@/tui/animator.js';
-import { DEFAULT_PROFILE, type GalleryEntry, type GalleryState } from './state.ts';
+import { DEFAULT_PROFILE, type GalleryEntry } from './state.ts';
 
 export type GalleryResult = { action: 'apply'; profileName: string } | { action: 'cancel' };
 
@@ -11,14 +11,14 @@ export async function runGalleryTUI(
   activeIndex: number,
 ): Promise<GalleryResult> {
   const otui = await import('@opentui/core');
-  const { createCliRenderer, Box, Text } = otui;
+  const { createCliRenderer, Box, Text, SelectRenderableEvents } = otui;
   type TextRenderableType = InstanceType<typeof otui.TextRenderable>;
   const { createProfileListPanel } = await import('./profile-list-panel.ts');
   const { createGalleryPreviewPanel } = await import('./profile-preview-panel.ts');
   const { setupGalleryKeyboard } = await import('./keyboard.ts');
-  const { selectedEntry } = await import('./state.ts');
 
   let renderer: Awaited<ReturnType<typeof createCliRenderer>> | null = null;
+  let selectedIndex = activeIndex;
 
   try {
     renderer = await createCliRenderer({
@@ -27,7 +27,6 @@ export async function runGalleryTUI(
     });
 
     const r = renderer;
-    const state: GalleryState = { entries, selectedIndex: activeIndex };
 
     return await new Promise<GalleryResult>((resolve) => {
       let resolved = false;
@@ -83,33 +82,29 @@ export async function runGalleryTUI(
         return;
       }
 
-      // Profile list (left)
-      const profileList = createProfileListPanel(mainRow);
+      // Buddy list (left) — uses native Select
+      const profileList = createProfileListPanel(mainRow, entries, activeIndex);
 
       // Preview (right)
       const preview = createGalleryPreviewPanel(mainRow);
 
       // Initial render + start animation
-      profileList.update(state);
-      preview.update(selectedEntry(state));
+      preview.update(entries[activeIndex]);
       unsubAnimation = animator.subscribe((frame) => preview.tick(frame));
+
+      // Update preview when Select selection changes
+      profileList.select?.on(SelectRenderableEvents.SELECTION_CHANGED, (index: number) => {
+        selectedIndex = index;
+        preview.update(entries[index]);
+      });
 
       const HELP_DEFAULT = '  ↑↓ navigate   Enter apply   Esc exit';
       const HELP_CONFIRM = '  Enter/Y confirm   Esc/N go back';
 
-      // Keyboard
+      // Keyboard — only handles Enter (confirm), Escape, Ctrl+C
       const keyboard = setupGalleryKeyboard(r.keyInput, {
-        onNavigate: (direction) => {
-          const len = state.entries.length;
-          state.selectedIndex =
-            direction === 'next'
-              ? (state.selectedIndex + 1) % len
-              : (state.selectedIndex - 1 + len) % len;
-          profileList.update(state);
-          preview.update(selectedEntry(state));
-        },
         onApply: () => {
-          const entry = selectedEntry(state);
+          const entry = entries[selectedIndex];
           if (entry.isDefault) {
             finish({ action: 'apply', profileName: DEFAULT_PROFILE });
           } else {

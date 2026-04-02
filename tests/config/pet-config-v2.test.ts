@@ -198,7 +198,7 @@ describe('switchToProfile', () => {
 
   it('throws on non-existent profile', () => {
     savePetConfigV2(makeV2());
-    expect(() => switchToProfile('nope')).toThrow('Profile "nope" not found');
+    expect(() => switchToProfile('nope')).toThrow('Buddy "nope" not found');
   });
 
   it('throws when no config exists', () => {
@@ -233,7 +233,7 @@ describe('deleteProfile', () => {
       }),
     );
 
-    expect(() => deleteProfile('active')).toThrow('Cannot delete the active profile');
+    expect(() => deleteProfile('active')).toThrow('Cannot delete the active buddy');
   });
 
   it('silently does nothing for non-existent profile', () => {
