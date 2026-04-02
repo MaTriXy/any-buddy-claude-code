@@ -22,7 +22,7 @@ export function loadPetConfig(): PetConfig | null {
   }
 }
 
-// --- v2 with profiles ---
+// --- v2 with profiles (keyed by salt) ---
 
 function migrateV1(v1: PetConfig): PetConfigV2 {
   const migrated: PetConfigV2 = {
@@ -36,9 +36,8 @@ function migrateV1(v1: PetConfig): PetConfigV2 {
   };
 
   if (v1.salt && v1.salt !== ORIGINAL_SALT && !v1.restored) {
-    const name = v1.species ?? 'default';
-    migrated.activeProfile = name;
-    migrated.profiles[name] = {
+    migrated.activeProfile = v1.salt;
+    migrated.profiles[v1.salt] = {
       salt: v1.salt,
       species: v1.species ?? 'duck',
       rarity: v1.rarity ?? 'common',
@@ -55,11 +54,52 @@ function migrateV1(v1: PetConfig): PetConfigV2 {
   return migrated;
 }
 
+/**
+ * Migrate v2 configs that were keyed by display name to salt-keyed.
+ * Detects the old format by checking if any key is NOT a valid salt
+ * (salts are exactly 15 chars from the charset [a-zA-Z0-9_-]).
+ */
+function migrateNameKeyedProfiles(config: PetConfigV2): boolean {
+  const saltPattern = /^[a-zA-Z0-9_-]{15}$/;
+  const entries = Object.entries(config.profiles);
+  if (entries.length === 0) return false;
+
+  // If all keys already look like salts, no migration needed
+  if (entries.every(([key]) => saltPattern.test(key))) return false;
+
+  const newProfiles: Record<string, ProfileData> = {};
+  for (const [key, profile] of entries) {
+    if (saltPattern.test(key)) {
+      // Already salt-keyed
+      newProfiles[key] = profile;
+    } else {
+      // Old name-keyed entry — re-key by salt, store old key as display name
+      newProfiles[profile.salt] = {
+        ...profile,
+        name: profile.name ?? key,
+      };
+      // Fix activeProfile if it pointed to the old name
+      if (config.activeProfile === key) {
+        config.activeProfile = profile.salt;
+      }
+    }
+  }
+
+  config.profiles = newProfiles;
+  return true;
+}
+
 export function loadPetConfigV2(): PetConfigV2 | null {
   if (!existsSync(OUR_CONFIG)) return null;
   try {
     const raw = JSON.parse(readFileSync(OUR_CONFIG, 'utf-8'));
-    if (raw.version === 2) return raw as PetConfigV2;
+    if (raw.version === 2) {
+      const config = raw as PetConfigV2;
+      if (migrateNameKeyedProfiles(config)) {
+        savePetConfigV2(config);
+      }
+      return config;
+    }
     const migrated = migrateV1(raw as PetConfig);
     savePetConfigV2(migrated);
     return migrated;
@@ -73,7 +113,6 @@ export function savePetConfigV2(data: PetConfigV2): void {
 }
 
 export function saveProfile(
-  name: string,
   profile: ProfileData,
   { activate = false }: { activate?: boolean } = {},
 ): void {
@@ -84,10 +123,10 @@ export function saveProfile(
     profiles: {},
   };
 
-  config.profiles[name] = profile;
+  config.profiles[profile.salt] = profile;
 
   if (activate) {
-    config.activeProfile = name;
+    config.activeProfile = profile.salt;
     if (config.salt && config.salt !== profile.salt) {
       config.previousSalt = config.salt;
     }
@@ -102,29 +141,30 @@ export function getProfiles(): Record<string, ProfileData> {
   return config?.profiles ?? {};
 }
 
-export function switchToProfile(name: string): PetConfigV2 {
+export function switchToProfile(salt: string): PetConfigV2 {
   const config = loadPetConfigV2();
-  if (!config?.profiles[name]) {
-    throw new Error(`Buddy "${name}" not found`);
+  if (!config?.profiles[salt]) {
+    throw new Error(`Buddy not found (salt: ${salt.slice(0, 6)}...)`);
   }
 
   config.previousSalt = config.salt;
-  config.activeProfile = name;
-  config.salt = config.profiles[name].salt;
+  config.activeProfile = salt;
+  config.salt = config.profiles[salt].salt;
   config.appliedAt = new Date().toISOString();
 
   savePetConfigV2(config);
   return config;
 }
 
-export function deleteProfile(name: string): void {
+export function deleteProfile(salt: string): void {
   const config = loadPetConfigV2();
-  if (!config?.profiles[name]) return;
-  if (config.activeProfile === name) {
+  if (!config?.profiles[salt]) return;
+  if (config.activeProfile === salt) {
+    const name = config.profiles[salt].name ?? salt.slice(0, 6);
     throw new Error(`Cannot delete the active buddy "${name}". Switch to another first.`);
   }
   config.profiles = Object.fromEntries(
-    Object.entries(config.profiles).filter(([key]) => key !== name),
+    Object.entries(config.profiles).filter(([key]) => key !== salt),
   );
   savePetConfigV2(config);
 }

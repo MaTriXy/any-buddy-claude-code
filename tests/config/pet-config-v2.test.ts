@@ -70,9 +70,10 @@ describe('loadPetConfigV2 + savePetConfigV2', () => {
   });
 
   it('round-trips v2 config', () => {
+    const salt = 'sparky-salt-1234';
     const config = makeV2({
-      activeProfile: 'sparky',
-      profiles: { sparky: makeProfile({ salt: 'sparky-salt-1234' }) },
+      activeProfile: salt,
+      profiles: { [salt]: makeProfile({ salt, name: 'Sparky' }) },
     });
     savePetConfigV2(config);
     expect(loadPetConfigV2()).toEqual(config);
@@ -85,7 +86,7 @@ describe('loadPetConfigV2 + savePetConfigV2', () => {
 });
 
 describe('v1 → v2 migration', () => {
-  it('migrates a v1 config with custom salt into a profile', () => {
+  it('migrates a v1 config with custom salt into a salt-keyed profile', () => {
     const v1: PetConfig = {
       salt: 'custom-salt-12345',
       species: 'cat',
@@ -98,10 +99,9 @@ describe('v1 → v2 migration', () => {
 
     const loaded = loadPetConfigV2();
     expect(loaded?.version).toBe(2);
-    expect(loaded?.activeProfile).toBe('cat');
-    expect(loaded?.profiles['cat']).toBeDefined();
-    expect(loaded?.profiles['cat'].salt).toBe('custom-salt-12345');
-    expect(loaded?.profiles['cat'].species).toBe('cat');
+    expect(loaded?.activeProfile).toBe('custom-salt-12345');
+    expect(loaded?.profiles['custom-salt-12345']).toBeDefined();
+    expect(loaded?.profiles['custom-salt-12345'].species).toBe('cat');
   });
 
   it('migrates a restored v1 config with no active profile', () => {
@@ -117,7 +117,7 @@ describe('v1 → v2 migration', () => {
     expect(Object.keys(loaded?.profiles ?? {})).toHaveLength(0);
   });
 
-  it('migrates v1 with original salt (no custom pet) to empty profiles', () => {
+  it('migrates v1 with original salt to empty profiles', () => {
     const v1: PetConfig = { salt: 'friend-2026-401' };
     writeFileSync(configPath, JSON.stringify(v1));
 
@@ -125,104 +125,138 @@ describe('v1 → v2 migration', () => {
     expect(loaded?.activeProfile).toBeNull();
     expect(Object.keys(loaded?.profiles ?? {})).toHaveLength(0);
   });
+});
 
-  it('uses species as profile name, falling back to "default"', () => {
-    const v1: PetConfig = { salt: 'custom-salt-99999' };
-    writeFileSync(configPath, JSON.stringify(v1));
+describe('name-keyed → salt-keyed migration', () => {
+  it('migrates old name-keyed profiles to salt-keyed', () => {
+    const nameKeyed: PetConfigV2 = {
+      version: 2,
+      activeProfile: 'fluffy',
+      salt: 'fluffy-salt-12345',
+      profiles: {
+        fluffy: makeProfile({ salt: 'fluffy-salt-12345', name: null }),
+        sparky: makeProfile({ salt: 'sparky-salt-12345', name: 'Sparky' }),
+      },
+    };
+    writeFileSync(configPath, JSON.stringify(nameKeyed));
 
     const loaded = loadPetConfigV2();
-    // No species → should use 'default'
-    expect(loaded?.profiles['default']).toBeDefined();
-    expect(loaded?.profiles['default'].species).toBe('duck');
+    // Profiles are now keyed by salt
+    expect(loaded?.profiles['fluffy-salt-12345']).toBeDefined();
+    expect(loaded?.profiles['sparky-salt-12345']).toBeDefined();
+    // Old name keys are gone
+    expect(loaded?.profiles['fluffy']).toBeUndefined();
+    expect(loaded?.profiles['sparky']).toBeUndefined();
+    // Display names preserved
+    expect(loaded?.profiles['fluffy-salt-12345'].name).toBe('fluffy');
+    expect(loaded?.profiles['sparky-salt-12345'].name).toBe('Sparky');
+    // activeProfile updated to salt
+    expect(loaded?.activeProfile).toBe('fluffy-salt-12345');
+  });
+
+  it('leaves already salt-keyed profiles unchanged', () => {
+    const saltKeyed = makeV2({
+      profiles: {
+        abcdefghijklmno: makeProfile({ salt: 'abcdefghijklmno', name: 'Test' }),
+      },
+    });
+    savePetConfigV2(saltKeyed);
+    const loaded = loadPetConfigV2();
+    expect(loaded?.profiles['abcdefghijklmno']).toBeDefined();
+    expect(loaded?.profiles['abcdefghijklmno'].name).toBe('Test');
   });
 });
 
 describe('saveProfile', () => {
-  it('adds a profile without activating it', () => {
+  it('adds a profile keyed by salt without activating', () => {
     savePetConfigV2(makeV2());
-    const profile = makeProfile({ salt: 'new-salt-1234567' });
-    saveProfile('fluffy', profile);
+    const profile = makeProfile({ salt: 'new-salt-1234567', name: 'Fluffy' });
+    saveProfile(profile);
 
     const loaded = loadPetConfigV2();
-    expect(loaded).not.toBeNull();
-    expect(loaded?.profiles['fluffy']).toEqual(profile);
+    expect(loaded?.profiles['new-salt-1234567']).toEqual(profile);
     expect(loaded?.activeProfile).toBeNull();
-    expect(loaded?.salt).toBe('friend-2026-401'); // unchanged
+    expect(loaded?.salt).toBe('friend-2026-401');
   });
 
   it('adds a profile and activates it', () => {
     savePetConfigV2(makeV2({ salt: 'old-salt-1234567' }));
-    const profile = makeProfile({ salt: 'activated-salt-00' });
-    saveProfile('sparky', profile, { activate: true });
+    const profile = makeProfile({ salt: 'activated-salt-00', name: 'Sparky' });
+    saveProfile(profile, { activate: true });
 
     const loaded = loadPetConfigV2();
-    expect(loaded).not.toBeNull();
-    expect(loaded?.activeProfile).toBe('sparky');
+    expect(loaded?.activeProfile).toBe('activated-salt-00');
     expect(loaded?.salt).toBe('activated-salt-00');
     expect(loaded?.previousSalt).toBe('old-salt-1234567');
   });
 
   it('creates fresh v2 config if none exists', () => {
-    saveProfile('first', makeProfile());
+    saveProfile(makeProfile({ salt: 'first-salt-12345', name: 'First' }));
     const loaded = loadPetConfigV2();
-    expect(loaded).not.toBeNull();
     expect(loaded?.version).toBe(2);
-    expect(loaded?.profiles['first']).toBeDefined();
+    expect(loaded?.profiles['first-salt-12345']).toBeDefined();
   });
 
   it('does not set previousSalt when activating with same salt', () => {
     savePetConfigV2(makeV2({ salt: 'same-salt-1234567' }));
-    saveProfile('x', makeProfile({ salt: 'same-salt-1234567' }), { activate: true });
+    saveProfile(makeProfile({ salt: 'same-salt-1234567' }), { activate: true });
 
     const loaded = loadPetConfigV2();
-    expect(loaded).not.toBeNull();
     expect(loaded?.previousSalt).toBeUndefined();
+  });
+
+  it('allows duplicate display names with different salts', () => {
+    savePetConfigV2(makeV2());
+    saveProfile(makeProfile({ salt: 'salt-aaaaaaaaaaaa', name: 'Tom' }));
+    saveProfile(makeProfile({ salt: 'salt-bbbbbbbbbbbb', name: 'Tom' }));
+
+    const loaded = loadPetConfigV2();
+    expect(loaded?.profiles['salt-aaaaaaaaaaaa']?.name).toBe('Tom');
+    expect(loaded?.profiles['salt-bbbbbbbbbbbb']?.name).toBe('Tom');
+    expect(Object.keys(loaded?.profiles ?? {})).toHaveLength(2);
   });
 });
 
 describe('switchToProfile', () => {
-  it('switches active profile and updates salt', () => {
-    const profile = makeProfile({ salt: 'target-salt-12345' });
-    savePetConfigV2(makeV2({ salt: 'old-salt-1234567', profiles: { target: profile } }));
+  it('switches active profile by salt', () => {
+    const salt = 'target-salt-12345';
+    const profile = makeProfile({ salt, name: 'Target' });
+    savePetConfigV2(makeV2({ salt: 'old-salt-1234567', profiles: { [salt]: profile } }));
 
-    const result = switchToProfile('target');
-    expect(result.activeProfile).toBe('target');
-    expect(result.salt).toBe('target-salt-12345');
+    const result = switchToProfile(salt);
+    expect(result.activeProfile).toBe(salt);
+    expect(result.salt).toBe(salt);
     expect(result.previousSalt).toBe('old-salt-1234567');
-
-    // Persisted
-    const loaded = loadPetConfigV2();
-    expect(loaded).not.toBeNull();
-    expect(loaded?.activeProfile).toBe('target');
   });
 
-  it('throws on non-existent profile', () => {
+  it('throws on non-existent salt', () => {
     savePetConfigV2(makeV2());
-    expect(() => switchToProfile('nope')).toThrow('Buddy "nope" not found');
+    expect(() => switchToProfile('nonexistent-salt')).toThrow('Buddy not found');
   });
 
   it('throws when no config exists', () => {
-    expect(() => switchToProfile('any')).toThrow();
+    expect(() => switchToProfile('any-salt-1234567')).toThrow();
   });
 });
 
 describe('deleteProfile', () => {
-  it('removes a non-active profile', () => {
+  it('removes a non-active profile by salt', () => {
+    const keepSalt = 'keep-salt-123456';
+    const rmSalt = 'rm-salt-12345678';
     savePetConfigV2(
       makeV2({
-        activeProfile: 'keep',
+        activeProfile: keepSalt,
         profiles: {
-          keep: makeProfile({ salt: 'keep-salt-123456' }),
-          remove: makeProfile({ salt: 'rm-salt-12345678' }),
+          [keepSalt]: makeProfile({ salt: keepSalt }),
+          [rmSalt]: makeProfile({ salt: rmSalt }),
         },
       }),
     );
 
-    deleteProfile('remove');
+    deleteProfile(rmSalt);
     const loaded = loadPetConfigV2();
-    expect(loaded).not.toBeNull();
-    expect(loaded?.profiles['remove']).toBeUndefined();
-    expect(loaded?.profiles['keep']).toBeDefined();
+    expect(loaded?.profiles[rmSalt]).toBeUndefined();
+    expect(loaded?.profiles[keepSalt]).toBeDefined();
   });
 
   it('throws when deleting the active profile', () => {
@@ -230,17 +264,17 @@ describe('deleteProfile', () => {
     savePetConfigV2(
       makeV2({
         salt: activeSalt,
-        activeProfile: 'active',
-        profiles: { active: makeProfile({ salt: activeSalt }) },
+        activeProfile: activeSalt,
+        profiles: { [activeSalt]: makeProfile({ salt: activeSalt, name: 'ActiveBud' }) },
       }),
     );
 
-    expect(() => deleteProfile('active')).toThrow('Cannot delete the active buddy');
+    expect(() => deleteProfile(activeSalt)).toThrow('Cannot delete the active buddy');
   });
 
-  it('silently does nothing for non-existent profile', () => {
+  it('silently does nothing for non-existent salt', () => {
     savePetConfigV2(makeV2());
-    expect(() => deleteProfile('ghost')).not.toThrow();
+    expect(() => deleteProfile('ghost-salt-12345')).not.toThrow();
   });
 });
 
@@ -249,16 +283,16 @@ describe('getProfiles', () => {
     expect(getProfiles()).toEqual({});
   });
 
-  it('returns all saved profiles', () => {
+  it('returns all saved profiles keyed by salt', () => {
     savePetConfigV2(
       makeV2({
         profiles: {
-          a: makeProfile({ salt: 'a-salt-123456789' }),
-          b: makeProfile({ salt: 'b-salt-123456789' }),
+          'a-salt-123456789': makeProfile({ salt: 'a-salt-123456789' }),
+          'b-salt-123456789': makeProfile({ salt: 'b-salt-123456789' }),
         },
       }),
     );
     const profiles = getProfiles();
-    expect(Object.keys(profiles)).toEqual(['a', 'b']);
+    expect(Object.keys(profiles)).toEqual(['a-salt-123456789', 'b-salt-123456789']);
   });
 });

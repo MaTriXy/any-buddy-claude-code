@@ -7,7 +7,8 @@ import { isNodeRuntime } from '@/patcher/salt-ops.js';
 export const DEFAULT_PROFILE = '__default__';
 
 export interface GalleryEntry {
-  name: string;
+  name: string; // display name
+  salt: string; // unique identifier (salt or DEFAULT_PROFILE)
   isDefault: boolean;
   isActive: boolean;
   bones: Bones;
@@ -22,14 +23,16 @@ export function buildGalleryEntries(userId: string, binaryPath: string): Gallery
   const defaultBones = roll(userId, ORIGINAL_SALT, { useNodeHash }).bones;
   const defaultEntry: GalleryEntry = {
     name: 'Original',
+    salt: DEFAULT_PROFILE,
     isDefault: true,
     isActive: currentSalt === ORIGINAL_SALT,
     bones: defaultBones,
     profile: null,
   };
 
-  const profileEntries: GalleryEntry[] = Object.entries(profiles).map(([name, profile]) => ({
-    name,
+  const profileEntries: GalleryEntry[] = Object.entries(profiles).map(([salt, profile]) => ({
+    name: profile.name ?? salt.slice(0, 8),
+    salt,
     isDefault: false,
     isActive: profile.salt === currentSalt,
     bones: roll(userId, profile.salt, { useNodeHash }).bones,

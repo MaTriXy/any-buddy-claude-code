@@ -4,12 +4,11 @@ import type { Renderable as OTUIRenderable } from '@opentui/core';
 import { RARITY_STARS } from '@/constants.js';
 import { BORDER_COLOR, HIGHLIGHT_BG, HIGHLIGHT_FG, TEXT_COLOR } from '@/tui/builder/colors.js';
 import type { GalleryEntry } from './state.ts';
-import { DEFAULT_PROFILE } from './state.ts';
 
 const MAX_NAME_WIDTH = 20;
 
 function entriesToOptions(entries: GalleryEntry[]): SelectOption[] {
-  const names = entries.map((e) => (e.isDefault ? 'Original' : e.name));
+  const names = entries.map((e) => e.name);
   const species = entries.map((e) => e.bones.species);
   const nameWidth = Math.min(Math.max(...names.map((n) => n.length)), MAX_NAME_WIDTH);
   const speciesWidth = Math.max(...species.map((s) => s.length));
@@ -23,7 +22,7 @@ function entriesToOptions(entries: GalleryEntry[]): SelectOption[] {
     return {
       name: label,
       description: '',
-      value: entry.isDefault ? DEFAULT_PROFILE : entry.name,
+      value: entry.salt,
     };
   });
 }

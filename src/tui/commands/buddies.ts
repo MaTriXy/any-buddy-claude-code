@@ -27,11 +27,10 @@ import {
 async function selectBuddyFallback(entries: GalleryEntry[]): Promise<string | null> {
   const choices = entries.map((entry) => {
     const dot = entry.isActive ? '●' : '○';
-    const name = entry.isDefault ? 'Original' : entry.name;
     const stars = RARITY_STARS[entry.bones.rarity];
     return {
-      name: `${dot} ${name} — ${entry.bones.species} ${stars}`,
-      value: entry.isDefault ? DEFAULT_PROFILE : entry.name,
+      name: `${dot} ${entry.name} — ${entry.bones.species} ${stars}`,
+      value: entry.salt,
     };
   });
 
@@ -98,31 +97,32 @@ export async function runBuddies(): Promise<void> {
     return;
   }
 
+  // selectedName is now a salt (or DEFAULT_PROFILE)
+  const selectedSalt = selectedName;
+
   // Skip if already active
-  const selectedEntry = entries.find(
-    (e) => (e.isDefault ? DEFAULT_PROFILE : e.name) === selectedName,
-  );
+  const selectedEntry = entries.find((e) => e.salt === selectedSalt);
   if (selectedEntry?.isActive) {
     console.log(chalk.dim('\n  Already active.\n'));
     return;
   }
 
   // Snapshot outgoing profile's companion identity
-  const active = config?.activeProfile;
-  if (active && config?.profiles[active]) {
-    const outgoing = config.profiles[active];
+  const activeSalt = config?.activeProfile;
+  if (activeSalt && config?.profiles[activeSalt]) {
+    const outgoing = config.profiles[activeSalt];
     outgoing.name = getCompanionName() ?? outgoing.name;
     outgoing.personality = getCompanionPersonality() ?? outgoing.personality;
-    saveProfile(active, outgoing);
+    saveProfile(outgoing);
   }
 
   // Find the old salt in binary
   const oldSalt = config?.salt ?? ORIGINAL_SALT;
-  const isDefault = selectedName === DEFAULT_PROFILE;
-  const newSalt = isDefault ? ORIGINAL_SALT : config?.profiles[selectedName]?.salt;
+  const isDefault = selectedSalt === DEFAULT_PROFILE;
+  const newSalt = isDefault ? ORIGINAL_SALT : selectedSalt;
 
-  if (!newSalt) {
-    console.error(chalk.red(`\n  Buddy "${selectedName}" not found.\n`));
+  if (!isDefault && !config?.profiles[selectedSalt]) {
+    console.error(chalk.red('\n  Buddy not found.\n'));
     return;
   }
 
@@ -133,7 +133,7 @@ export async function runBuddies(): Promise<void> {
     const check = verifySalt(binaryPath, trySalt);
     if (check.found >= getMinSaltCount(binaryPath)) {
       const patchResult = patchBinary(binaryPath, trySalt, newSalt);
-      const displayName = isDefault ? 'Original' : selectedName;
+      const displayName = selectedEntry?.name ?? 'Unknown';
       console.log(
         chalk.green(`\n  Switched to "${displayName}"! (${patchResult.replacements} replacements)`),
       );
@@ -152,7 +152,6 @@ export async function runBuddies(): Promise<void> {
 
   // Update config
   if (isDefault) {
-    // Default pet has no profile entry — update config directly
     if (config) {
       config.previousSalt = config.salt;
       config.activeProfile = null;
@@ -161,12 +160,12 @@ export async function runBuddies(): Promise<void> {
       savePetConfigV2(config);
     }
   } else {
-    switchToProfile(selectedName);
+    switchToProfile(selectedSalt);
   }
 
   // Restore incoming profile's companion identity
   if (!isDefault) {
-    const incoming = config?.profiles[selectedName];
+    const incoming = config?.profiles[selectedSalt];
     if (incoming?.name) {
       try {
         renameCompanion(incoming.name);

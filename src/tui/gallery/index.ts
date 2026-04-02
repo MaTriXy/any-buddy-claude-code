@@ -2,7 +2,7 @@ import { ISSUE_URL } from '@/constants.js';
 import { canUseBuilder } from '@/tui/builder/index.js';
 import { BORDER_COLOR, DIM_COLOR, FOCUS_BORDER } from '@/tui/builder/colors.js';
 import { createAnimator } from '@/tui/animator.js';
-import { DEFAULT_PROFILE, type GalleryEntry } from './state.ts';
+import { type GalleryEntry } from './state.ts';
 
 export type GalleryResult = { action: 'apply'; profileName: string } | { action: 'cancel' };
 
@@ -121,14 +121,12 @@ export async function runGalleryTUI(
         `  Delete "${name}"?   Enter/Y confirm   Esc/N go back`;
       const DELETE_COLOR = '#FF5555';
 
-      function selectedProfileName(): string {
-        const entry = entries[selectedIndex];
-        return entry.isDefault ? DEFAULT_PROFILE : entry.name;
+      function selectedProfileSalt(): string {
+        return entries[selectedIndex].salt;
       }
 
       function selectedDisplayName(): string {
-        const entry = entries[selectedIndex];
-        return entry.isDefault ? 'Original' : entry.name;
+        return entries[selectedIndex].name;
       }
 
       // Keyboard — handles Enter (confirm), d (delete), Escape, Ctrl+C
@@ -140,11 +138,11 @@ export async function runGalleryTUI(
         },
         {
           onApply: () => {
-            finish({ action: 'apply', profileName: selectedProfileName() });
+            finish({ action: 'apply', profileName: selectedProfileSalt() });
           },
           onDelete: () => {
             if (!onDelete) return;
-            entries = onDelete(selectedProfileName());
+            entries = onDelete(selectedProfileSalt());
             selectedIndex = Math.min(selectedIndex, entries.length - 1);
             profileList.update(entries, selectedIndex);
             preview.update(entries[selectedIndex]);

@@ -91,6 +91,33 @@ export async function selectMode(): Promise<'preset' | 'custom'> {
   });
 }
 
+export type StartAction = 'build' | 'presets' | 'buddies';
+
+export async function selectStartAction(buddyCount: number): Promise<StartAction> {
+  const choices: { name: string; value: StartAction }[] = [
+    {
+      name: `Build your own        ${chalk.dim('— customize species, rarity, eyes, hat')}`,
+      value: 'build',
+    },
+    {
+      name: `Browse presets         ${chalk.dim(`— pick from ${PRESETS.length} curated builds`)}`,
+      value: 'presets',
+    },
+  ];
+
+  if (buddyCount > 0) {
+    choices.push({
+      name: `Saved buddies (${buddyCount})      ${chalk.dim('— switch between your saved pets')}`,
+      value: 'buddies',
+    });
+  }
+
+  return select({
+    message: 'What would you like to do?',
+    choices,
+  });
+}
+
 export async function selectPreset(): Promise<Preset> {
   return select({
     message: 'Pick a preset',

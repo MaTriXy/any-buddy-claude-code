@@ -143,10 +143,10 @@ export interface ProfileData {
 
 export interface PetConfigV2 {
   version: 2;
-  activeProfile: string | null;
+  activeProfile: string | null; // salt of the active profile (null = original)
   salt: string;
   previousSalt?: string;
-  profiles: Record<string, ProfileData>;
+  profiles: Record<string, ProfileData>; // keyed by salt
   appliedTo?: string;
   appliedAt?: string;
   restored?: boolean;

@@ -8,6 +8,8 @@ export {
   switchToProfile,
   deleteProfile,
 } from './pet-config.ts';
+// Note: saveProfile(profile) keys by profile.salt
+// switchToProfile(salt) and deleteProfile(salt) take salt, not name
 export {
   getClaudeUserId,
   getCompanionName,

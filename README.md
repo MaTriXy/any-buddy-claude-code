@@ -59,21 +59,32 @@ cd any-buddy && pnpm install && pnpm link --global
 ## Usage
 
 ```bash
-any-buddy                    # Interactive pet picker
+any-buddy                    # Start screen — build, browse presets, or switch buddies
+```
+
+The start screen lets you pick between:
+- **Build your own** — full interactive builder with live ASCII preview
+- **Browse presets** — 23 curated themed builds with animated preview
+- **Saved buddies** — switch between your saved pets (shown when you have saves)
+
+After picking your pet, the entire flow stays in the TUI — salt search with progress bar, naming, personality, patching, and hook setup.
+
+```bash
 any-buddy current            # Show your current pet
 any-buddy preview            # Browse without applying
 any-buddy apply              # Re-apply after Claude Code update
 any-buddy restore            # Restore original pet
-any-buddy buddies              # Browse and switch between your buddies
+any-buddy buddies            # Browse and switch between your buddies
 any-buddy rehatch            # Delete companion, re-hatch via /buddy
 ```
 
 ### Non-Interactive Mode
 
-Skip prompts with flags:
+Skip prompts with flags (bypasses the start screen):
 
 ```bash
 any-buddy -s dragon -r legendary -e '✦' -t wizard --shiny --name Draco -y
+any-buddy --preset "Arcane Dragon" -y
 ```
 
 <details>
@@ -85,6 +96,7 @@ any-buddy -s dragon -r legendary -e '✦' -t wizard --shiny --name Draco -y
 | `--rarity <level>` | `-r` | Rarity (common, uncommon, rare, epic, legendary) |
 | `--eye <char>` | `-e` | Eye style (` ·  ✦  ×  ◉  @  ° `) |
 | `--hat <name>` | `-t` | Hat (crown, tophat, propeller, halo, wizard, beanie, tinyduck) |
+| `--preset <name>` | | Use a curated preset (e.g., "Arcane Dragon") |
 | `--name <name>` | `-n` | Rename companion |
 | `--personality <desc>` | `-p` | Set personality (controls speech bubble) |
 | `--shiny` | | Require shiny (~100x longer search) |
@@ -114,7 +126,7 @@ any-buddy -s dragon -r legendary -e '✦' -t wizard --shiny --name Draco -y
 any-buddy restore
 ```
 
-Patches the salt back to original, removes the auto-patch hook, and clears saved config.
+Patches the salt back to original and removes the auto-patch hook. Your saved buddies are preserved — use `any-buddy buddies` to reactivate one later.
 
 ## How It Works
 
@@ -136,8 +148,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, project structure,
 - [@jtuskan](https://github.com/jtuskan) -- Windows support for npm-based installs ([#5](https://github.com/cpaczek/any-buddy/pull/5))
 - [@aaronepinto](https://github.com/aaronepinto) -- macOS ad-hoc code signing ([#3](https://github.com/cpaczek/any-buddy/pull/3))
 - [@joshpocock](https://github.com/joshpocock) -- FNV-1a hash support for Node runtime ([#8](https://github.com/cpaczek/any-buddy/pull/8))
-- [@Co-Messi](https://github.com/Co-Messi) -- Multi-worker parallelism + early-exit optimization ([#11](https://github.com/cpaczek/any-buddy/pull/11))
-- [@Ahmad8864](https://github.com/Ahmad8864) -- 8-core cap idea ([#10](https://github.com/cpaczek/any-buddy/pull/10))
+- [@Co-Messi](https://github.com/Co-Messi) -- Multi-worker parallelism + early-exit optimization ([#11](https://github.com/cpaczek/any-buddy/pull/11)), curated preset builds ([#15](https://github.com/cpaczek/any-buddy/pull/15))
+- [@Ahmad8864](https://github.com/Ahmad8864) -- 8-core cap idea ([#10](https://github.com/cpaczek/any-buddy/pull/10)), buddy profiles ([#17](https://github.com/cpaczek/any-buddy/pull/17))
 
 ## License
 

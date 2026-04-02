@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import {
-  runInteractive,
+  runStartScreen,
   runPreview,
   runCurrent,
   runApply,
@@ -108,7 +108,7 @@ try {
       printHelp();
       break;
     default:
-      await runInteractive(flags);
+      await runStartScreen(flags);
       break;
   }
   process.exit(0);

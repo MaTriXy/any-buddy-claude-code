@@ -35,8 +35,6 @@ import {
   selectRarity,
   selectHat,
   selectStat,
-  selectMode,
-  selectPreset,
 } from '../prompts.ts';
 import { PRESETS } from '@/presets.js';
 import { allTraitsFlagged } from '../builder/state.ts';
@@ -58,16 +56,6 @@ async function selectCoreTraits(
   // --preset flag: resolve by name
   if (flags.preset) {
     return resolvePreset(flags.preset);
-  }
-
-  // If no attribute flags, offer preset vs custom choice
-  const hasAttributeFlags = flags.species || flags.eye || flags.rarity || flags.hat;
-  if (!hasAttributeFlags) {
-    const mode = await selectMode();
-    if (mode === 'preset') {
-      const chosen = await selectPreset();
-      return { species: chosen.species, eye: chosen.eye, rarity: chosen.rarity, hat: chosen.hat };
-    }
   }
 
   // Manual selection
@@ -172,9 +160,13 @@ class CancelledError extends Error {
   }
 }
 
-export async function runInteractive(flags: CliFlags = {}): Promise<void> {
-  banner();
+interface SetupResult {
+  userId: string;
+  binaryPath: string;
+  useNodeHash: boolean;
+}
 
+function runSetup(): SetupResult {
   const preflight = runPreflight({ requireBinary: true });
   if (!preflight.ok || !preflight.binaryPath) {
     process.exit(1);
@@ -201,7 +193,17 @@ export async function runInteractive(flags: CliFlags = {}): Promise<void> {
     showPet(patchedBones, 'Your active patched pet');
   }
 
-  // --- Selection flow ---
+  return { userId, binaryPath, useNodeHash };
+}
+
+export async function runInteractive(
+  flags: CliFlags = {},
+  { skipBanner = false }: { skipBanner?: boolean } = {},
+): Promise<void> {
+  if (!skipBanner) banner();
+
+  const { userId, binaryPath, useNodeHash } = runSetup();
+
   let desired: DesiredTraits;
   try {
     desired = await selectTraits(flags);
@@ -213,7 +215,45 @@ export async function runInteractive(flags: CliFlags = {}): Promise<void> {
     throw err;
   }
 
-  // Show preview of what was selected (for sequential path and flags path)
+  await applyDesiredTraits(desired, flags, { userId, binaryPath, useNodeHash });
+}
+
+export async function runInteractiveWithTraits(
+  desired: DesiredTraits,
+  flags: CliFlags = {},
+): Promise<void> {
+  const { userId, binaryPath, useNodeHash } = runSetup();
+  await applyDesiredTraits(desired, flags, { userId, binaryPath, useNodeHash });
+}
+
+async function applyDesiredTraits(
+  desired: DesiredTraits,
+  flags: CliFlags,
+  setup: SetupResult,
+): Promise<void> {
+  // Try the OpenTUI apply flow
+  try {
+    const { canUseBuilder } = await import('../builder/index.ts');
+    if (await canUseBuilder()) {
+      const { runApplyTUI } = await import('../apply/index.ts');
+      await runApplyTUI(desired, flags, setup);
+      return;
+    }
+  } catch {
+    // OpenTUI unavailable — fall through to sequential
+  }
+
+  await applyDesiredTraitsSequential(desired, flags, setup);
+}
+
+async function applyDesiredTraitsSequential(
+  desired: DesiredTraits,
+  flags: CliFlags,
+  { userId, binaryPath, useNodeHash }: SetupResult,
+): Promise<void> {
+  const existingConfig = loadPetConfig();
+
+  // Show preview of what was selected
   const previewBones = { ...desired, stats: {} };
   showPet(previewBones, 'Your selection');
 
@@ -288,7 +328,7 @@ export async function runInteractive(flags: CliFlags = {}): Promise<void> {
   ).trim();
 
   if (profileName) {
-    saveProfile(profileName, {
+    saveProfile({
       salt: result.salt,
       species: desired.species,
       rarity: desired.rarity,
@@ -296,7 +336,7 @@ export async function runInteractive(flags: CliFlags = {}): Promise<void> {
       hat: desired.hat,
       shiny: desired.shiny,
       stats: foundBones.stats,
-      name: null,
+      name: profileName,
       personality: null,
       createdAt: new Date().toISOString(),
     });
@@ -355,7 +395,7 @@ export async function runInteractive(flags: CliFlags = {}): Promise<void> {
   configV2.appliedTo = binaryPath;
   configV2.appliedAt = new Date().toISOString();
   if (profileName) {
-    configV2.activeProfile = profileName;
+    configV2.activeProfile = result.salt;
   }
   savePetConfigV2(configV2);
 
@@ -457,11 +497,11 @@ export async function runInteractive(flags: CliFlags = {}): Promise<void> {
 
   // Update profile with final companion identity (now that rename/personality are done)
   if (profileName) {
-    const saved = configV2.profiles[profileName];
+    const saved = configV2.profiles[result.salt];
     if (saved) {
-      saved.name = getCompanionName() ?? saved.name;
+      saved.name = profileName || getCompanionName() || saved.name;
       saved.personality = getCompanionPersonality() ?? saved.personality;
-      saveProfile(profileName, saved, { activate: true });
+      saveProfile(saved, { activate: true });
     }
   }
 
