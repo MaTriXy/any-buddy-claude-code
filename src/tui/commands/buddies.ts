@@ -25,7 +25,7 @@ import {
 
 const MIN_SALT_COUNT = platform() === 'win32' ? 1 : 3;
 
-async function runSequentialSwitch(entries: GalleryEntry[]): Promise<string | null> {
+async function selectBuddyFallback(entries: GalleryEntry[]): Promise<string | null> {
   const choices = entries.map((entry) => {
     const dot = entry.isActive ? '●' : '○';
     const name = entry.isDefault ? 'Original' : entry.name;
@@ -44,7 +44,7 @@ async function runSequentialSwitch(entries: GalleryEntry[]): Promise<string | nu
   return choice;
 }
 
-export async function runSwitch(): Promise<void> {
+export async function runBuddies(): Promise<void> {
   banner();
 
   const preflight = runPreflight({ requireBinary: true });
@@ -84,7 +84,7 @@ export async function runSwitch(): Promise<void> {
 
   if (selectedName === null) {
     try {
-      selectedName = await runSequentialSwitch(entries);
+      selectedName = await selectBuddyFallback(entries);
     } catch {
       console.log(chalk.dim('\n  Cancelled.\n'));
       return;

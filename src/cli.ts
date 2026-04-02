@@ -7,7 +7,7 @@ import {
   runApply,
   runRestore,
   runRehatch,
-  runSwitch,
+  runBuddies,
 } from './tui/index.ts';
 import { ISSUE_URL, diagnostics } from './constants.ts';
 import type { CliFlags } from './types.ts';
@@ -99,7 +99,7 @@ try {
       await runRehatch();
       break;
     case 'buddies':
-      await runSwitch();
+      await runBuddies();
       break;
     case 'help':
       printHelp();
