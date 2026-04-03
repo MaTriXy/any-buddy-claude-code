@@ -124,6 +124,7 @@ export interface CliFlags {
   silent?: boolean;
   noHook?: boolean;
   yes?: boolean;
+  all?: boolean;
 }
 
 export type RngFunction = () => number;
