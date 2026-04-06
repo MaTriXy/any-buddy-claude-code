@@ -1,7 +1,8 @@
 import { ISSUE_URL } from '@/constants.js';
 import { BORDER_COLOR, DIM_COLOR, FOCUS_BORDER } from '@/tui/builder/colors.js';
+import { getCompanionName } from '@/config/index.js';
 
-export type StartAction = 'build' | 'presets' | 'buddies';
+export type StartAction = 'build' | 'presets' | 'buddies' | 'rename';
 
 interface MenuEntry {
   value: StartAction;
@@ -38,7 +39,20 @@ export async function runStartTUI(buddyCount: number): Promise<StartAction | nul
       let resolved = false;
       let selected = 0;
 
-      const entries: MenuEntry[] = [
+      const currentName = getCompanionName();
+
+      const entries: MenuEntry[] = [];
+
+      if (currentName !== null) {
+        entries.push({
+          value: 'rename',
+          icon: '✏',
+          title: 'Rename buddy',
+          desc: `Current: "${currentName}"`,
+        });
+      }
+
+      entries.push(
         {
           value: 'build',
           icon: '⚡',
@@ -51,7 +65,7 @@ export async function runStartTUI(buddyCount: number): Promise<StartAction | nul
           title: 'Browse presets',
           desc: 'Pick from curated themed builds with live preview',
         },
-      ];
+      );
 
       if (buddyCount > 0) {
         entries.push({

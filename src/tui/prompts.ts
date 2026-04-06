@@ -91,10 +91,22 @@ export async function selectMode(): Promise<'preset' | 'custom'> {
   });
 }
 
-export type StartAction = 'build' | 'presets' | 'buddies';
+export type StartAction = 'build' | 'presets' | 'buddies' | 'rename';
 
-export async function selectStartAction(buddyCount: number): Promise<StartAction> {
-  const choices: { name: string; value: StartAction }[] = [
+export async function selectStartAction(
+  buddyCount: number,
+  { companionName }: { companionName?: string | null } = {},
+): Promise<StartAction> {
+  const choices: { name: string; value: StartAction }[] = [];
+
+  if (companionName) {
+    choices.push({
+      name: `Rename buddy            ${chalk.dim(`— current: "${companionName}"`)}`,
+      value: 'rename',
+    });
+  }
+
+  choices.push(
     {
       name: `Build your own        ${chalk.dim('— customize species, rarity, eyes, hat')}`,
       value: 'build',
@@ -103,7 +115,7 @@ export async function selectStartAction(buddyCount: number): Promise<StartAction
       name: `Browse presets         ${chalk.dim(`— pick from ${PRESETS.length} curated builds`)}`,
       value: 'presets',
     },
-  ];
+  );
 
   if (buddyCount > 0) {
     choices.push({

@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import type { CliFlags, DesiredTraits } from '@/types.js';
 import type { Preset } from '@/presets.js';
-import { getProfiles } from '@/config/index.js';
+import { getProfiles, getCompanionName, renameCompanion } from '@/config/index.js';
 import { selectStartAction, selectPreset } from '../prompts.ts';
 import { banner } from '../display.ts';
 import { runBuddies } from './buddies.ts';
@@ -32,7 +32,7 @@ function presetToTraits(preset: Preset): DesiredTraits {
   };
 }
 
-type StartAction = 'build' | 'presets' | 'buddies';
+type StartAction = 'build' | 'presets' | 'buddies' | 'rename';
 
 export async function runStartScreen(flags: CliFlags = {}): Promise<void> {
   if (hasTraitFlags(flags)) {
@@ -76,7 +76,7 @@ export async function runStartScreen(flags: CliFlags = {}): Promise<void> {
         );
       }
     }
-    action = await selectStartAction(buddyCount);
+    action = await selectStartAction(buddyCount, { companionName: getCompanionName() });
   }
 
   switch (action) {
@@ -109,5 +109,38 @@ export async function runStartScreen(flags: CliFlags = {}): Promise<void> {
 
     case 'buddies':
       return runBuddies();
+
+    case 'rename': {
+      let handled = false;
+      try {
+        const { canUseBuilder } = await import('../builder/index.ts');
+        if (await canUseBuilder()) {
+          const { runRenameTUI } = await import('../rename/index.ts');
+          await runRenameTUI();
+          handled = true;
+        }
+      } catch {
+        // OpenTUI unavailable — fall through to inquirer
+      }
+
+      if (!handled) {
+        const { input } = await import('@inquirer/prompts');
+        const currentName = getCompanionName();
+        const newName = (
+          await input({
+            message: `New name for your buddy (current: "${currentName}")`,
+          })
+        ).trim();
+        if (newName && newName !== currentName) {
+          try {
+            renameCompanion(newName);
+            console.log(chalk.green(`  Renamed "${currentName}" → "${newName}"`));
+          } catch (err) {
+            console.log(chalk.yellow(`  Could not rename: ${(err as Error).message}`));
+          }
+        }
+      }
+      return runStartScreen(flags);
+    }
   }
 }
