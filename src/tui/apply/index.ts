@@ -565,7 +565,7 @@ export async function runApplyTUI(
       // Input steps (name, personality_custom) are handled by InputRenderableEvents.ENTER
       // on the widget itself (set up in addInput callbacks). This handler covers
       // confirmations (Y/N), Select steps, and navigation-only steps.
-      function handleKeys(key: { name?: string; ctrl?: boolean }): void {
+      function handleKeys(key: { name?: string; ctrl?: boolean; stopPropagation?(): void }): void {
         if (key.ctrl) return; // Ctrl+C handled separately
 
         switch (currentStep) {
@@ -575,7 +575,13 @@ export async function runApplyTUI(
             break;
 
           case 'searching':
-            if (key.name === 'return' && saltResult) showStep('name');
+            if (key.name === 'return' && saltResult) {
+              showStep('name');
+              // Stop propagation so the Enter that triggered this transition is not
+              // delivered to the newly-focused Input widget (which would instantly
+              // submit it with an empty value, skipping the name step entirely).
+              key.stopPropagation?.();
+            }
             break;
 
           // 'name' and 'personality_custom' — Enter handled by Input widget callbacks
@@ -598,6 +604,9 @@ export async function runApplyTUI(
                 nextAfterPersonality();
               } else {
                 showStep('personality_custom');
+                // Same as above: stop propagation so the Enter that selected
+                // "Write custom" is not delivered to the newly-focused Input.
+                key.stopPropagation?.();
               }
             }
             break;
