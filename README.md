@@ -1,3 +1,5 @@
+# Buddy feature was removed from claude code in .97 was a blast building this and thank you to all the contributors and if they every bring it back we will hack it again
+
 <p align="center">
   <img src="assets/header.svg" alt="any-buddy" width="700">
 </p>
